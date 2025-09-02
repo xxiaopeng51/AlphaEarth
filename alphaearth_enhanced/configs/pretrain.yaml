@@ -1,0 +1,152 @@
+# Configuration for AlphaEarth Enhanced Pretraining
+
+model:
+  name: AlphaEarthEnhanced
+  
+  # Vision backbone parameters
+  img_size: 224
+  patch_size: 16
+  num_frames: 4
+  
+  # Band configurations for different sensors
+  num_bands_optical: 13  # Sentinel-2
+  num_bands_sar: 2       # Sentinel-1 VV, VH
+  num_bands_thermal: 2   # Landsat thermal
+  
+  # Architecture parameters
+  embed_dim: 768
+  depth: 12
+  num_heads: 12
+  mlp_ratio: 4.0
+  
+  # Multimodal fusion
+  fusion_depth: 4
+  fusion_heads: 8
+  fusion_type: cross_attention  # Options: early, late, cross_attention, gated
+  
+  # Text encoder
+  text_encoder: clip
+  max_text_length: 77
+  
+  # Training strategies
+  use_mae: true
+  mask_ratio: 0.75
+  use_contrastive: true
+  temperature: 0.07
+  
+  # Regularization
+  drop_rate: 0.0
+  attn_drop_rate: 0.0
+  drop_path_rate: 0.1
+
+data:
+  # Dataset paths
+  optical_data_path: /data/sentinel2/
+  sar_data_path: /data/sentinel1/
+  thermal_data_path: /data/landsat/
+  text_annotations_path: /data/annotations/
+  
+  # Data loading parameters
+  batch_size: 32
+  num_workers: 8
+  pin_memory: true
+  prefetch_factor: 2
+  
+  # Geographic coverage
+  coverage: global  # Options: global, regional, local
+  regions:
+    - north_america
+    - europe
+    - asia
+    - africa
+    - south_america
+    - oceania
+  
+  # Temporal parameters
+  time_range:
+    start: "2020-01-01"
+    end: "2024-01-01"
+  temporal_sampling: monthly
+  
+  # Augmentation
+  augmentation:
+    random_crop: true
+    random_flip: true
+    random_rotation: true
+    color_jitter: false
+    mixup_alpha: 0.2
+    cutmix_alpha: 1.0
+
+training:
+  # Optimization
+  optimizer: AdamW
+  learning_rate: 1.5e-4
+  weight_decay: 0.05
+  betas: [0.9, 0.95]
+  
+  # Learning rate schedule
+  scheduler: cosine
+  warmup_epochs: 40
+  warmup_lr: 1e-6
+  min_lr: 1e-6
+  
+  # Training parameters
+  epochs: 800
+  gradient_clip: 1.0
+  gradient_accumulation_steps: 4
+  
+  # Mixed precision
+  use_amp: true
+  amp_dtype: float16
+  
+  # Distributed training
+  distributed: true
+  backend: nccl
+  world_size: 8
+  
+  # Loss weights
+  loss_weights:
+    mae: 1.0
+    contrastive: 0.5
+    consistency: 0.1
+
+evaluation:
+  # Evaluation frequency
+  eval_frequency: 10  # epochs
+  
+  # Metrics
+  metrics:
+    - mae_loss
+    - contrastive_accuracy
+    - retrieval_map
+    - linear_probe_accuracy
+  
+  # Downstream tasks for evaluation
+  downstream_tasks:
+    - land_cover_classification
+    - change_detection
+    - cloud_removal
+    - super_resolution
+
+logging:
+  # Experiment tracking
+  use_wandb: true
+  wandb_project: alphaearth-enhanced
+  wandb_entity: earth-observation
+  
+  # TensorBoard
+  use_tensorboard: true
+  log_dir: ./logs
+  
+  # Checkpointing
+  checkpoint_dir: ./checkpoints
+  save_frequency: 10  # epochs
+  keep_last_k: 5
+  save_best: true
+
+# Hardware requirements
+hardware:
+  gpus: 8  # Number of GPUs
+  gpu_memory: 40  # GB per GPU (A100 recommended)
+  cpu_memory: 256  # GB RAM
+  storage: 10000  # GB for data storage
