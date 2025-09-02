@@ -1,0 +1,148 @@
+# Training configuration for AlphaEarth Foundations
+
+# Inherit from base config
+defaults:
+  - base_config
+
+# Override training-specific settings
+training:
+  # Multi-stage training strategy
+  stages:
+    # Stage 1: Pre-training on large-scale unlabeled data
+    pretrain:
+      epochs: 200
+      batch_size: 64
+      lr: 1e-4
+      data:
+        - "sentinel2_global"
+        - "landsat_global"
+        - "sentinel1_global"
+      losses:
+        - "masked_autoencoder"
+        - "contrastive_learning"
+        
+    # Stage 2: Multi-modal alignment
+    alignment:
+      epochs: 100
+      batch_size: 32
+      lr: 5e-5
+      data:
+        - "multimodal_aligned"
+      losses:
+        - "cross_modal_contrastive"
+        - "temporal_consistency"
+        
+    # Stage 3: Task-specific fine-tuning
+    finetune:
+      epochs: 50
+      batch_size: 16
+      lr: 1e-5
+      data:
+        - "task_specific"
+      losses:
+        - "task_loss"
+
+# Data configuration for training
+data:
+  # Training datasets
+  train_datasets:
+    - name: "sentinel2_global"
+      type: "optical"
+      path: "/data/sentinel2"
+      resolution: [10, 20, 60]
+      bands: ["B02", "B03", "B04", "B08", "B11", "B12"]
+      
+    - name: "landsat_global"
+      type: "optical"
+      path: "/data/landsat"
+      resolution: [30, 30, 100]
+      bands: ["B1", "B2", "B3", "B4", "B5", "B6", "B7"]
+      
+    - name: "sentinel1_global"
+      type: "radar"
+      path: "/data/sentinel1"
+      resolution: [5, 20]
+      polarizations: ["VV", "VH"]
+      
+    - name: "era5_weather"
+      type: "meteorological"
+      path: "/data/era5"
+      variables: ["temperature", "precipitation", "humidity", "pressure"]
+      temporal_resolution: "hourly"
+      
+    - name: "multimodal_aligned"
+      type: "multimodal"
+      path: "/data/aligned"
+      modalities: ["optical", "radar", "weather", "text"]
+
+# Model configuration for training
+model:
+  # Pre-training objectives
+  pretrain_objectives:
+    - name: "masked_autoencoder"
+      mask_ratio: 0.75
+      patch_size: 16
+      
+    - name: "contrastive_learning"
+      temperature: 0.07
+      queue_size: 65536
+      
+    - name: "temporal_consistency"
+      temporal_window: 7
+      consistency_weight: 0.1
+
+# Optimization for large-scale training
+training:
+  optimizer:
+    type: "adamw"
+    lr: 1e-4
+    weight_decay: 0.01
+    betas: [0.9, 0.95]
+    
+  scheduler:
+    type: "cosine_annealing_warmup"
+    warmup_epochs: 20
+    T_max: 200
+    eta_min: 1e-6
+    
+  # Gradient accumulation for large batch sizes
+  gradient_accumulation_steps: 4
+  
+  # Mixed precision training
+  mixed_precision: true
+  
+  # Distributed training
+  distributed:
+    enabled: true
+    strategy: "ddp"
+    find_unused_parameters: false
+
+# Monitoring and logging
+logging:
+  wandb:
+    project: "alphaearth-foundations-training"
+    name: "multimodal-pretrain-${now:%Y-%m-%d_%H-%M-%S}"
+    tags: ["pretraining", "multimodal", "global-scale"]
+    
+  # Log training metrics
+  log_metrics:
+    - "loss"
+    - "learning_rate"
+    - "gradient_norm"
+    - "memory_usage"
+    
+  # Save checkpoints
+  checkpoint:
+    save_every: 50
+    save_best: true
+    keep_last: 5
+    
+# Hardware optimization
+hardware:
+  # Memory optimization
+  gradient_checkpointing: true
+  dataloader_pin_memory: true
+  
+  # Performance optimization
+  compile_model: true  # PyTorch 2.0 compilation
+  channels_last: true  # Memory format optimization
