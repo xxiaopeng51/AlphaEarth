@@ -1,0 +1,202 @@
+# Enhanced Earth Foundation Model Configuration
+
+# Model Configuration
+model:
+  model_size: "base"  # "small", "base", "large", "xlarge"
+  embed_dim: 64
+  enable_text_alignment: true
+  enable_reconstruction: true
+  dropout: 0.1
+
+# Input Modalities Configuration
+input_modalities:
+  optical:
+    source: "sentinel2"
+    channels: 13  # Sentinel-2 + Landsat bands
+    resolution: 10
+    bands: ["B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B11", "B12", "B2", "B3", "B4"]
+  
+  sar:
+    source: "sentinel1" 
+    channels: 4  # VV, VH, coherence, incidence_angle
+    resolution: 10
+    polarizations: ["VV", "VH"]
+  
+  environmental:
+    source: "era5"
+    channels: 8
+    resolution: 1000
+    variables: ["temperature_2m", "precipitation", "relative_humidity", "wind_speed", 
+                "surface_pressure", "solar_radiation", "elevation", "slope"]
+
+# Training Configuration
+training:
+  # Basic settings
+  batch_size: 8
+  learning_rate: 1e-4
+  weight_decay: 0.01
+  num_epochs: 100
+  warmup_epochs: 5
+  
+  # Optimization
+  optimizer: "adamw"
+  scheduler: "cosine"
+  gradient_clip_norm: 1.0
+  gradient_accumulation_steps: 4
+  
+  # Mixed precision
+  use_mixed_precision: true
+  
+  # Data loading
+  num_workers: 8
+  pin_memory: true
+  
+  # Checkpointing
+  save_dir: "./checkpoints"
+  log_interval: 100
+  eval_interval: 1000
+  save_interval: 5000
+  
+  # Distributed training
+  distributed: false
+  world_size: 1
+  rank: 0
+
+# Data Configuration
+data:
+  # Dataset settings
+  num_samples:
+    train: 50000
+    val: 5000
+    test: 5000
+  
+  patch_size: 224
+  time_window: 16
+  temporal_resolution: "monthly"
+  spatial_resolution: 10.0
+  
+  # Augmentation
+  enable_augmentation: true
+  augmentation_prob: 0.5
+  
+  # Synthetic data (for demo)
+  synthetic_mode: true
+  cache_data: false
+
+# Loss Configuration  
+loss:
+  # Loss weights
+  contrastive_weight: 1.0
+  reconstruction_weight: 0.5
+  consistency_weight: 0.3
+  vmf_weight: 0.1
+  
+  # Contrastive learning
+  temperature: 0.07
+  use_hard_negatives: true
+  hard_negative_ratio: 0.1
+  
+  # Reconstruction
+  reconstruction_types: ["l1", "l2", "ssim"]
+  perceptual_weight: 0.1
+  
+  # Modality weights
+  modality_weights:
+    optical: 1.0
+    sar: 0.8
+    environmental: 0.6
+
+# Architecture Configuration
+architecture:
+  # STP Encoder
+  stp:
+    space_dim: 768
+    time_dim: 384
+    precision_dim: 192
+    num_layers: 12
+    num_heads: 12
+    use_gradient_checkpointing: true
+    use_adaptive_fusion: true
+    layer_drop_rate: 0.1
+  
+  # Multimodal Encoder
+  multimodal:
+    fusion_strategy: "attention"  # "attention", "concat"
+    use_dynamic_embedding: true
+    wave_dim: 128
+    num_latent_tokens: 128
+  
+  # Temporal Summarizer
+  temporal:
+    pooling_strategy: "attention"  # "attention", "weighted_avg", "transformer"
+    use_continuous_time: true
+    interpolation_method: "neural"
+  
+  # Backbone
+  backbone:
+    use_flash_attn: true
+    use_rope: true
+    use_rmsnorm: true
+
+# Evaluation Configuration
+evaluation:
+  metrics: ["mse", "mae", "ssim", "psnr", "cosine_similarity"]
+  downstream_tasks: ["classification", "segmentation", "change_detection"]
+  
+  # Benchmark datasets
+  benchmarks:
+    - name: "eurosat"
+      task: "classification"
+    - name: "so2sat"
+      task: "classification"  
+    - name: "dfc2020"
+      task: "segmentation"
+
+# Experiment Tracking
+wandb:
+  project: "enhanced-earth-foundation"
+  entity: "your-wandb-entity"
+  name: "global-multimodal-v1"
+  tags: ["multimodal", "earth-observation", "foundation-model"]
+  
+# Scaling Configuration
+scaling:
+  # Model scaling
+  model_sizes:
+    small:
+      d_model: 512
+      num_layers: 6
+      num_heads: 8
+      
+    base:
+      d_model: 768
+      num_layers: 12
+      num_heads: 12
+      
+    large:
+      d_model: 1024
+      num_layers: 24
+      num_heads: 16
+      
+    xlarge:
+      d_model: 1536
+      num_layers: 32
+      num_heads: 24
+  
+  # Data scaling
+  max_samples: 1000000
+  max_patch_size: 512
+  max_time_window: 64
+
+# Hardware Configuration
+hardware:
+  # GPU settings
+  gpu_memory_fraction: 0.9
+  allow_tf32: true
+  
+  # CPU settings
+  num_cpu_cores: 16
+  
+  # Storage
+  data_cache_size: "50GB"
+  checkpoint_storage: "100GB"
