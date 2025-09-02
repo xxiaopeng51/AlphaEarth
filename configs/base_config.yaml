@@ -1,0 +1,176 @@
+# Base configuration for AlphaEarth Foundations
+
+# Model configuration
+model:
+  name: "alphaearth_foundations"
+  version: "1.0.0"
+  
+  # Architecture parameters
+  architecture:
+    # Multi-modal encoders
+    encoders:
+      optical:
+        type: "vision_transformer"
+        model_name: "vit_large_patch16_224"
+        pretrained: true
+        freeze_backbone: false
+        output_dim: 1024
+        
+      radar:
+        type: "vision_transformer"
+        model_name: "vit_base_patch16_224"
+        pretrained: true
+        freeze_backbone: false
+        output_dim: 768
+        
+      meteorological:
+        type: "transformer"
+        input_dim: 128
+        hidden_dim: 512
+        num_layers: 6
+        num_heads: 8
+        output_dim: 512
+        
+      text:
+        type: "bert"
+        model_name: "bert-base-uncased"
+        pretrained: true
+        freeze_backbone: false
+        output_dim: 768
+    
+    # Fusion module
+    fusion:
+      type: "cross_attention"
+      hidden_dim: 1024
+      num_layers: 4
+      num_heads: 16
+      dropout: 0.1
+      
+    # Spatial-Temporal Precision (STP) module
+    stp_module:
+      spatial_attention_layers: 3
+      temporal_attention_layers: 2
+      resolution_attention_layers: 2
+      hidden_dim: 1024
+      num_heads: 16
+      
+    # Task-specific heads
+    heads:
+      classification:
+        type: "linear"
+        input_dim: 1024
+        num_classes: 1000
+        
+      regression:
+        type: "linear"
+        input_dim: 1024
+        output_dim: 1
+        
+      segmentation:
+        type: "unet_decoder"
+        input_dim: 1024
+        num_classes: 20
+
+# Data configuration
+data:
+  # Dataset paths
+  datasets:
+    optical: "/data/satellite/optical"
+    radar: "/data/satellite/radar"
+    meteorological: "/data/weather/era5"
+    text: "/data/annotations"
+    
+  # Data loading
+  batch_size: 32
+  num_workers: 8
+  pin_memory: true
+  
+  # Data augmentation
+  augmentation:
+    optical:
+      horizontal_flip: 0.5
+      vertical_flip: 0.5
+      rotation: 0.3
+      brightness_contrast: 0.2
+      
+    radar:
+      horizontal_flip: 0.5
+      vertical_flip: 0.5
+      rotation: 0.3
+      noise: 0.1
+
+# Training configuration
+training:
+  # Optimization
+  optimizer:
+    type: "adamw"
+    lr: 1e-4
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
+    
+  scheduler:
+    type: "cosine_annealing"
+    T_max: 100
+    eta_min: 1e-6
+    
+  # Training parameters
+  epochs: 100
+  warmup_epochs: 10
+  gradient_clip_norm: 1.0
+  
+  # Loss functions
+  losses:
+    main: "cross_entropy"
+    auxiliary: "mse"
+    weights: [1.0, 0.1]
+    
+  # Checkpointing
+  save_every: 10
+  save_best: true
+  early_stopping:
+    patience: 20
+    min_delta: 0.001
+
+# Evaluation configuration
+evaluation:
+  metrics:
+    - "accuracy"
+    - "f1_score"
+    - "precision"
+    - "recall"
+    - "iou"
+    
+  # Validation frequency
+  val_every: 5
+  
+  # Test datasets
+  test_datasets:
+    - "bigearthnet"
+    - "eurosat"
+    - "uc_merced"
+
+# Logging and monitoring
+logging:
+  level: "INFO"
+  log_every: 100
+  
+  # Weights & Biases
+  wandb:
+    project: "alphaearth-foundations"
+    entity: "your-entity"
+    tags: ["multimodal", "satellite", "foundation-model"]
+    
+  # TensorBoard
+  tensorboard:
+    log_dir: "./logs"
+    log_every: 100
+
+# Hardware configuration
+hardware:
+  device: "cuda"
+  mixed_precision: true
+  distributed:
+    enabled: false
+    backend: "nccl"
+    world_size: 1
+    rank: 0
