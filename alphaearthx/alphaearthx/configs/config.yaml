@@ -1,0 +1,34 @@
+defaults:
+  - _self_
+  - model: backbone
+  - data: toy
+  - trainer: default
+  - optimizer: adamw
+
+model:
+  backbone:
+    _target_: alphaearthx.models.spatiotemporal_transformer.SpatioTemporalBackbone
+    in_channels: 3
+    embed_dim: 128
+    patch_size: 4
+    depth: 2
+    num_heads: 4
+
+data:
+  name: toy_spatiotemporal
+  num_samples: 64
+  time_steps: 4
+  channels: 3
+  height: 64
+  width: 64
+  batch_size: 2
+  num_workers: 2
+
+trainer:
+  device: auto
+  max_steps: 5
+
+optimizer:
+  _target_: torch.optim.AdamW
+  lr: 1.0e-3
+  weight_decay: 0.05
