@@ -1,0 +1,40 @@
+seed: 42
+precision: bf16
+global_batch_size: 512
+grad_accum_steps: 8
+
+optimizer:
+  name: adamw
+  lr: 2.0e-4
+  weight_decay: 0.05
+
+scheduler:
+  name: cosine
+  warmup_steps: 5000
+
+data:
+  shards: "/data/alphaearth/shards/{000000..000999}.tar"
+  num_workers: 8
+  tile_size: 256
+  sample_probs:
+    s2: 0.5
+    s1: 0.2
+    landsat: 0.2
+    aux: 0.1
+
+model:
+  eo:
+    patch_size: 16
+    dim: 768
+    depth: 12
+    heads: 12
+  fusion:
+    latent_dim: 1024
+    latent_tokens: 512
+    perceiver_layers: 8
+    moe_experts: 8
+
+objectives:
+  contrastive_weight: 1.0
+  mae_weight: 1.0
+  temporal_weight: 0.3
